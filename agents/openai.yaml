@@ -1,0 +1,3 @@
+﻿interface:
+  display_name: "Windows FS Toolkit"
+  short_description: "Reliable file read/write/search on Windows, avoiding encoding issues and Chinese text corruption"
