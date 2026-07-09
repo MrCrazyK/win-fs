@@ -16,14 +16,29 @@ windows系统内用codex、opencode和claude读写文件操作时经常报错或
 - `search` 默认跳过二进制文件。
 - `search` 默认排除 `.git`、`.hg`、`.svn`、`.idea`、`.vscode`、`node_modules`、`dist`、`build`、`target`、`tmp`、`__pycache__`；确实需要时可加 `--include-noise-dirs`。
 - 增加 `tests/test_file_util.py`，覆盖 BOM、GBK stdout、二进制搜索、默认排除噪音目录。
+- `read` 支持 `--start-line` / `--end-line`，可以直接读取大文件中间片段。
+- `search` 支持 `--exclude-dir` / `--include-dir`，可以临时调整目录过滤。
+- `search` 支持 `--max-file-size`，避免扫超大日志、压缩包和构建产物。
+- `write` 支持 `--atomic` 和 `--backup`，覆盖写入前可以生成 `.bak`。
+- `replace` 支持 `--backup`，批量替换前可以生成 `.bak`。
+- `info` 增加 `bom`、`newline`、`sha256` 字段，方便排查文件差异和编码问题。
+- `search` 支持 `--jsonl`，搜索结果很大时可以按行消费。
+- 增加 `scripts/preflight.py`，检查 `.py`、`.md`、`.yaml`、`.yml` 是否 UTF-8 no BOM，并默认运行完整测试。
 
-## 后续迭代任务
+## 已完成的迭代任务
 
-1. 增加 `read --start-line --end-line`，避免大文件只能从头读 N 行。
-2. 增加 `search --exclude-dir` / `--include-dir`，让调用方能按项目临时调整目录过滤。
-3. 增加 `search --max-file-size`，跳过超大日志、压缩包、构建产物。
-4. 增加 `write --atomic` 和可选 `--backup`，降低写文件中断导致内容损坏的风险。
-5. 增加 `replace --backup`，让批量替换前后可回滚。
-6. 增加 `info` 的 BOM 字段、换行符字段和 sha256 字段，便于排查“文件看着一样但工具报错”的问题。
-7. 增加 JSONL 输出模式，搜索结果很大时方便流式消费，避免一次性输出过大。
-8. 增加发布前自检脚本，检查所有 `.py`、`.md`、`.yaml` 是否 UTF-8 no BOM，并跑完整测试。
+1. `read --start-line --end-line`
+2. `search --exclude-dir` / `--include-dir`
+3. `search --max-file-size`
+4. `write --atomic` 和 `--backup`
+5. `replace --backup`
+6. `info` 的 BOM、换行符、sha256 字段
+7. `search --jsonl`
+8. `scripts/preflight.py`
+
+## 验证
+
+```powershell
+python -m unittest tests.test_file_util
+python scripts/preflight.py
+```

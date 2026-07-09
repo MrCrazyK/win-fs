@@ -14,10 +14,12 @@ This avoids PowerShell encoding bugs, Chinese text corruption, and path escaping
 |------|---------|
 | Read a file | python <skill_dir>/scripts/file_util.py read <path> |
 | Read first N lines | python <skill_dir>/scripts/file_util.py read <path> --lines N |
+| Read line range | python <skill_dir>/scripts/file_util.py read <path> --start-line 20 --end-line 80 |
 | Read with encoding | python <skill_dir>/scripts/file_util.py read <path> --encoding gbk |
 | Write a file | python <skill_dir>/scripts/file_util.py write <path> --content "..." |
 | Write from stdin | ... | python <skill_dir>/scripts/file_util.py write <path> --stdin |
 | Append to file | python <skill_dir>/scripts/file_util.py write <path> --content "..." --append |
+| Atomic write with backup | python <skill_dir>/scripts/file_util.py write <path> --content "..." --atomic --backup |
 | Get file info | python <skill_dir>/scripts/file_util.py info <path> |
 | List directory | python <skill_dir>/scripts/file_util.py list <dir> --pattern "*.py" |
 | List files only | python <skill_dir>/scripts/file_util.py list <dir> --type f |
@@ -27,9 +29,14 @@ This avoids PowerShell encoding bugs, Chinese text corruption, and path escaping
 | Search specific files | python <skill_dir>/scripts/file_util.py search <dir> <regex> --file-glob "*.js" |
 | Case-sensitive search | python <skill_dir>/scripts/file_util.py search <dir> <regex> --case-sensitive |
 | Search noise dirs too | python <skill_dir>/scripts/file_util.py search <dir> <regex> --include-noise-dirs |
+| Search with dir filters | python <skill_dir>/scripts/file_util.py search <dir> <regex> --include-dir src --exclude-dir dist |
+| Search with max size | python <skill_dir>/scripts/file_util.py search <dir> <regex> --max-file-size 1048576 |
+| Search as JSONL | python <skill_dir>/scripts/file_util.py search <dir> <regex> --jsonl |
 | Replace text | python <skill_dir>/scripts/file_util.py replace <path> <old> <new> |
 | Replace regex | python <skill_dir>/scripts/file_util.py replace <path> <old> <new> --regex |
 | Dry-run replace | python <skill_dir>/scripts/file_util.py replace <path> <old> <new> --dry-run |
+| Replace with backup | python <skill_dir>/scripts/file_util.py replace <path> <old> <new> --backup |
+| Run preflight checks | python <skill_dir>/scripts/preflight.py |
 | Detect encoding | python <skill_dir>/scripts/file_util.py detect-encoding <path> |
 | Check existence | python <skill_dir>/scripts/file_util.py exists <path> |
 | Create directory | python <skill_dir>/scripts/file_util.py mkdir <path> |
@@ -43,9 +50,10 @@ This avoids PowerShell encoding bugs, Chinese text corruption, and path escaping
 - **Encoding**: Auto-detects file encoding (UTF-8, GBK, GB2312, GB18030, UTF-16, Latin-1). Writes default to UTF-8 without BOM.
 - **Console output**: Reconfigures stdout/stderr to UTF-8 so Chinese and special symbols do not crash under GBK consoles.
 - **Paths**: Works with any Windows path (absolute, relative, UNC, spaces, Chinese chars).
-- **Search output**: JSON array with file, line number, content, and optional context. Skips binary files and common noise dirs by default (`.git`, `node_modules`, `target`, `dist`, `build`, `tmp`, etc.).
-- **Info output**: JSON with exists, path, size, is_file, is_dir, encoding, lines.
-- **Replace**: Detects source encoding, writes back UTF-8. Use --dry-run first to preview.
+- **Search output**: JSON array or JSONL with file, line number, content, and optional context. Skips binary files and common noise dirs by default (`.git`, `node_modules`, `target`, `dist`, `build`, `tmp`, etc.).
+- **Info output**: JSON with exists, path, size, is_file, is_dir, encoding, BOM, newline style, sha256, and lines.
+- **Write**: Supports atomic replace and `.bak` backup for safer overwrites.
+- **Replace**: Detects source encoding, writes back UTF-8. Use --dry-run first to preview; use --backup for a `.bak` copy before writing.
 
 ## When NOT to use
 
