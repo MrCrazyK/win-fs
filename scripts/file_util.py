@@ -1,5 +1,18 @@
-﻿import sys, os, shutil, re, json, codecs, argparse
+import sys, os, shutil, re, json, codecs, argparse
 from pathlib import Path
+
+DEFAULT_EXCLUDES = {
+    '.git', '.hg', '.svn', '.idea', '.vscode',
+    'node_modules', 'dist', 'build', 'target', 'tmp', '__pycache__',
+}
+BINARY_SAMPLE_SIZE = 8192
+
+def _configure_stdio():
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding='utf-8', errors='replace')
+        except Exception:
+            pass
 
 def _has_bom(data):
     if data.startswith(codecs.BOM_UTF8): return 'utf-8-sig'
@@ -20,6 +33,16 @@ def detect_encoding(filepath):
     if bom: return bom
     result = _try_decode(raw, ['utf-8', 'gbk', 'gb2312', 'gb18030', 'latin-1'])
     return result[1] if result else 'utf-8'
+
+def is_binary_file(filepath):
+    try:
+        with open(filepath, 'rb') as f:
+            sample = f.read(BINARY_SAMPLE_SIZE)
+    except OSError:
+        return False
+    if not sample:
+        return False
+    return b'\x00' in sample
 
 def read_file(filepath, encoding=None, max_lines=None):
     enc = encoding or detect_encoding(filepath)
@@ -69,12 +92,24 @@ def list_dir(directory, pattern='*', file_type=None):
         results.append(str(item.absolute()))
     return results
 
-def search_files(directory, pattern, file_glob='*', case_sensitive=False, context_lines=0):
+def _iter_search_files(directory, file_glob, exclude_dirs):
+    root = Path(directory)
+    for current_root, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames if d not in exclude_dirs]
+        current = Path(current_root)
+        for name in filenames:
+            fpath = current / name
+            if fpath.match(file_glob):
+                yield fpath
+
+def search_files(directory, pattern, file_glob='*', case_sensitive=False, context_lines=0, exclude_dirs=None):
     flags = 0 if case_sensitive else re.IGNORECASE
     regex = re.compile(pattern, flags)
+    exclude_dirs = set(DEFAULT_EXCLUDES if exclude_dirs is None else exclude_dirs)
     results = []
-    for fpath in Path(directory).rglob(file_glob):
+    for fpath in _iter_search_files(directory, file_glob, exclude_dirs):
         if not fpath.is_file(): continue
+        if is_binary_file(str(fpath)): continue
         try:
             enc = detect_encoding(str(fpath))
             with open(fpath, 'r', encoding=enc, errors='replace') as f:
@@ -111,13 +146,14 @@ def replace_in_file(filepath, old, new, use_regex=False, dry_run=False):
     print(f'[OK] Replaced {count} occurrence(s) in {filepath}')
 
 def main():
+    _configure_stdio()
     parser = argparse.ArgumentParser(description='win-fs: Windows filesystem toolkit')
     sub = parser.add_subparsers(dest='cmd', required=True)
     p = sub.add_parser('read'); p.add_argument('path'); p.add_argument('--lines', type=int); p.add_argument('--encoding')
     p = sub.add_parser('write'); p.add_argument('path'); p.add_argument('--content'); p.add_argument('--stdin', action='store_true'); p.add_argument('--append', action='store_true'); p.add_argument('--encoding', default='utf-8')
     p = sub.add_parser('info'); p.add_argument('path')
     p = sub.add_parser('list'); p.add_argument('dir'); p.add_argument('--pattern', default='*'); p.add_argument('--type', choices=['f','d'])
-    p = sub.add_parser('search'); p.add_argument('dir'); p.add_argument('pattern'); p.add_argument('--file-glob', default='*'); p.add_argument('--case-sensitive', action='store_true'); p.add_argument('--context', type=int, default=0)
+    p = sub.add_parser('search'); p.add_argument('dir'); p.add_argument('pattern'); p.add_argument('--file-glob', default='*'); p.add_argument('--case-sensitive', action='store_true'); p.add_argument('--context', type=int, default=0); p.add_argument('--include-noise-dirs', action='store_true')
     p = sub.add_parser('replace'); p.add_argument('path'); p.add_argument('old'); p.add_argument('new'); p.add_argument('--regex', action='store_true'); p.add_argument('--dry-run', action='store_true')
     p = sub.add_parser('mkdir'); p.add_argument('path')
     p = sub.add_parser('copy'); p.add_argument('src'); p.add_argument('dst'); p.add_argument('--force', action='store_true')
@@ -139,7 +175,8 @@ def main():
             case 'list':
                 for item in list_dir(args.dir, args.pattern, args.type): print(item)
             case 'search':
-                print(json.dumps(search_files(args.dir, args.pattern, args.file_glob, args.case_sensitive, args.context), ensure_ascii=False, indent=2))
+                exclude_dirs = set() if args.include_noise_dirs else None
+                print(json.dumps(search_files(args.dir, args.pattern, args.file_glob, args.case_sensitive, args.context, exclude_dirs), ensure_ascii=False, indent=2))
             case 'replace': replace_in_file(args.path, args.old, args.new, args.regex, args.dry_run)
             case 'mkdir': Path(args.path).mkdir(parents=True, exist_ok=True); print(f'[OK] Created directory: {args.path}')
             case 'copy':

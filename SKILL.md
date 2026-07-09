@@ -26,6 +26,7 @@ This avoids PowerShell encoding bugs, Chinese text corruption, and path escaping
 | Search with context | python <skill_dir>/scripts/file_util.py search <dir> <regex> --context 2 |
 | Search specific files | python <skill_dir>/scripts/file_util.py search <dir> <regex> --file-glob "*.js" |
 | Case-sensitive search | python <skill_dir>/scripts/file_util.py search <dir> <regex> --case-sensitive |
+| Search noise dirs too | python <skill_dir>/scripts/file_util.py search <dir> <regex> --include-noise-dirs |
 | Replace text | python <skill_dir>/scripts/file_util.py replace <path> <old> <new> |
 | Replace regex | python <skill_dir>/scripts/file_util.py replace <path> <old> <new> --regex |
 | Dry-run replace | python <skill_dir>/scripts/file_util.py replace <path> <old> <new> --dry-run |
@@ -39,9 +40,10 @@ This avoids PowerShell encoding bugs, Chinese text corruption, and path escaping
 
 ## Key behaviors
 
-- **Encoding**: Auto-detects file encoding (UTF-8, GBK, GB2312, GB18030, UTF-16, Latin-1). Writes always use UTF-8.
+- **Encoding**: Auto-detects file encoding (UTF-8, GBK, GB2312, GB18030, UTF-16, Latin-1). Writes default to UTF-8 without BOM.
+- **Console output**: Reconfigures stdout/stderr to UTF-8 so Chinese and special symbols do not crash under GBK consoles.
 - **Paths**: Works with any Windows path (absolute, relative, UNC, spaces, Chinese chars).
-- **Search output**: JSON array with file, line number, content, and optional context.
+- **Search output**: JSON array with file, line number, content, and optional context. Skips binary files and common noise dirs by default (`.git`, `node_modules`, `target`, `dist`, `build`, `tmp`, etc.).
 - **Info output**: JSON with exists, path, size, is_file, is_dir, encoding, lines.
 - **Replace**: Detects source encoding, writes back UTF-8. Use --dry-run first to preview.
 
